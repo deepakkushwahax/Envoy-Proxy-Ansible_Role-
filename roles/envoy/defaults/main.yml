@@ -1,0 +1,2 @@
+---
+envoy_config_path: /etc/envoy/envoy.yaml

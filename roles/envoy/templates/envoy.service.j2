@@ -1,0 +1,14 @@
+[Unit]
+Description=Envoy Proxy
+Documentation=https://www.envoyproxy.io/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/envoy -c {{ envoy_config_path }}
+Restart=on-failure
+User=envoy
+Group=envoy
+
+[Install]
+WantedBy=multi-user.target
