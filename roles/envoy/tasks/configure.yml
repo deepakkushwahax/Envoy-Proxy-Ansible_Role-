@@ -1,0 +1,47 @@
+---
+- name: Create Envoy group
+  ansible.builtin.group:
+    name: envoy
+    state: present
+
+- name: Create Envoy user
+  ansible.builtin.user:
+    name: envoy
+    group: envoy
+    system: yes
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Create Envoy configuration directory
+  ansible.builtin.file:
+    path: /etc/envoy
+    state: directory
+    owner: envoy
+    group: envoy
+    mode: "0755"
+
+- name: Deploy Envoy service file
+  ansible.builtin.template:
+    src: envoy.service.j2
+    dest: /etc/systemd/system/envoy.service
+    mode: "0644"
+  notify: Restart envoy
+
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Deploy Envoy configuration
+  ansible.builtin.template:
+    src: envoy.yaml.j2
+    dest: "{{ envoy_config_path }}"
+    owner: envoy
+    group: envoy
+    mode: "0644"
+  notify: Restart envoy
+
+- name: Ensure Envoy service is started and enabled
+  ansible.builtin.service:
+    name: envoy
+    state: started
+    enabled: yes

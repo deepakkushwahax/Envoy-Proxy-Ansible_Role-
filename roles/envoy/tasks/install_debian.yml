@@ -1,0 +1,43 @@
+---
+- name: Install prerequisites
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - gnupg2
+      - curl
+      - lsb-release
+    state: present
+    update_cache: yes
+
+- name: Remove broken Envoy GPG key
+  ansible.builtin.file:
+    path: /usr/share/keyrings/envoy-keyring.gpg
+    state: absent
+
+- name: Download Envoy GPG key
+  ansible.builtin.get_url:
+    url: https://apt.envoyproxy.io/signing.key
+    dest: /tmp/envoy-signing.key
+    mode: "0644"
+
+- name: Dearmor Envoy GPG key
+  ansible.builtin.shell: cat /tmp/envoy-signing.key | gpg --dearmor -o /usr/share/keyrings/envoy-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/envoy-keyring.gpg
+
+- name: Determine Envoy repository codename
+  ansible.builtin.set_fact:
+    envoy_repo_codename: "{{ 'jammy' if ansible_distribution_release == 'noble' else ansible_distribution_release }}"
+
+- name: Add Envoy repository
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/envoy-keyring.gpg] https://apt.envoyproxy.io {{ envoy_repo_codename }} main"
+    state: present
+    filename: envoy
+
+- name: Install Envoy
+  ansible.builtin.apt:
+    name: envoy
+    state: present
+    update_cache: yes
+  notify: Restart envoy

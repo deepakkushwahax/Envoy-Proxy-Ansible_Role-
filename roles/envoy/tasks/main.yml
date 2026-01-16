@@ -1,86 +1,11 @@
 ---
-- name: Install prerequisites
-  ansible.builtin.apt:
-    name:
-      - apt-transport-https
-      - gnupg2
-      - curl
-      - lsb-release
-    state: present
-    update_cache: yes
+- name: Include Debian/Ubuntu installation tasks
+  include_tasks: install_debian.yml
+  when: ansible_os_family == "Debian"
 
-- name: Remove broken Envoy GPG key
-  ansible.builtin.file:
-    path: /usr/share/keyrings/envoy-keyring.gpg
-    state: absent
+- name: Include RedHat/Amazon Linux installation tasks
+  include_tasks: install_redhat.yml
+  when: ansible_os_family == "RedHat"
 
-- name: Download Envoy GPG key
-  ansible.builtin.get_url:
-    url: https://apt.envoyproxy.io/signing.key
-    dest: /tmp/envoy-signing.key
-    mode: "0644"
-
-- name: Dearmor Envoy GPG key
-  ansible.builtin.shell: cat /tmp/envoy-signing.key | gpg --dearmor -o /usr/share/keyrings/envoy-keyring.gpg
-  args:
-    creates: /usr/share/keyrings/envoy-keyring.gpg
-
-- name: Add Envoy repository
-  ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/envoy-keyring.gpg] https://apt.envoyproxy.io jammy main"
-    state: present
-    filename: envoy
-
-- name: Install Envoy
-  ansible.builtin.apt:
-    name: envoy
-    state: present
-    update_cache: yes
-  notify: Restart envoy
-
-- name: Create Envoy group
-  ansible.builtin.group:
-    name: envoy
-    state: present
-
-- name: Create Envoy user
-  ansible.builtin.user:
-    name: envoy
-    group: envoy
-    system: yes
-    shell: /usr/sbin/nologin
-    state: present
-
-- name: Deploy Envoy service file
-  ansible.builtin.template:
-    src: envoy.service.j2
-    dest: /etc/systemd/system/envoy.service
-    mode: "0644"
-  notify: Restart envoy
-
-- name: Reload systemd
-  ansible.builtin.systemd:
-    daemon_reload: yes
-
-- name: Create Envoy configuration directory
-  ansible.builtin.file:
-    path: /etc/envoy
-    state: directory
-    owner: envoy
-    group: envoy
-    mode: "0755"
-
-- name: Deploy Envoy configuration
-  ansible.builtin.template:
-    src: envoy.yaml.j2
-    dest: "{{ envoy_config_path }}"
-    owner: envoy
-    group: envoy
-    mode: "0644"
-  notify: Restart envoy
-
-- name: Ensure Envoy service is started and enabled
-  ansible.builtin.service:
-    name: envoy
-    state: started
-    enabled: yes
+- name: Include configuration tasks
+  include_tasks: configure.yml

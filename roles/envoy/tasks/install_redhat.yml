@@ -1,0 +1,34 @@
+---
+- name: Install prerequisites
+  ansible.builtin.yum:
+    name:
+      - tar
+      - gzip
+    state: present
+
+- name: Download func-e binary manager
+  ansible.builtin.unarchive:
+    src: https://github.com/tetratelabs/func-e/releases/download/v1.3.0/func-e_1.3.0_linux_amd64.tar.gz
+    dest: /usr/local/bin
+    remote_src: yes
+    mode: "0755"
+
+- name: Fetch Envoy binary using func-e
+  ansible.builtin.command:
+    cmd: /usr/local/bin/func-e use 1.30.1
+  register: funce_result
+  changed_when: "'downloaded' in funce_result.stdout"
+
+- name: Find Envoy binary path
+  ansible.builtin.command:
+    cmd: /usr/local/bin/func-e which 1.30.1
+  register: envoy_path
+  changed_when: false
+
+- name: Install Envoy binary to system path
+  ansible.builtin.copy:
+    src: "{{ envoy_path.stdout }}"
+    dest: /usr/bin/envoy
+    mode: "0755"
+    remote_src: yes
+  notify: Restart envoy
